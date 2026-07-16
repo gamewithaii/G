@@ -6,59 +6,70 @@
 </head>
 <body>
 
-    <!-- UI для показа статуса -->
-    <div id="ui" style="position: absolute; top: 10px; left: 10px; color: white; z-index: 100; font-family: sans-serif;">
-        <h2 id="status">Уровень: 1 | Убей демона, чтобы прокачаться!</h2>
+    <div id="ui" style="position: absolute; top: 10px; left: 10px; color: white; z-index: 100; font-family: sans-serif; background: rgba(0,0,0,0.5); padding: 10px;">
+        <h2 id="status">Уровень: 1 | Опыт: 0</h2>
     </div>
 
-    <a-scene physics="debug: false">
-        <!-- Игрок -->
-        <a-entity id="player" position="0 1.6 0" kinematic-body>
-            <a-entity camera look-controls wasd-controls>
-                <!-- Катана -->
-                <a-entity id="katana" position="0.3 -0.2 -0.5" rotation="-45 0 0">
-                    <a-box width="0.05" height="0.05" depth="1" color="silver"></a-box>
-                </a-entity>
+    <a-scene webxr="referenceSpaceType: local">
+        <a-assets>
+            <a-asset-item id="katana-model" src="katana.glb"></a-asset-item>
+        </a-assets>
+
+        <a-entity id="rig">
+            <a-camera position="0 1.6 0"></a-camera>
+            
+            <a-entity id="right-hand" laser-controls="hand: right" raycaster="objects: .collidable"></a-entity>
+            
+            <a-entity oculus-touch-controls="hand: left">
+                <a-entity id="katana" gltf-model="#katana-model" position="0 0.05 -0.1" rotation="-45 0 0" scale="1 1 1"></a-entity>
             </a-entity>
         </a-entity>
 
-        <!-- Демон (Цель) -->
-        <a-box id="demon" position="0 1 -3" color="red" static-body 
-               onclick="hitDemon()"></a-box>
+        <a-box id="demon" class="collidable" position="0 1.5 -2" color="red"></a-box>
 
-        <a-plane rotation="-90 0 0" width="10" height="10" color="#333" static-body></a-plane>
+        <a-plane rotation="-90 0 0" width="10" height="10" color="#333"></a-plane>
     </a-scene>
 
     <script>
         let level = 1;
         let exp = 0;
         const statusText = document.getElementById('status');
+        const demon = document.getElementById('demon');
 
-        // Логика убийства демона
-        function hitDemon() {
+        // Логика взаимодействия через контроллер
+        demon.addEventListener('click', () => {
             exp += 5;
             level = Math.floor(exp / 10) + 1;
             statusText.innerHTML = `Уровень: ${level} | Опыт: ${exp}`;
-            alert("Демон повержен! Опыт +5");
-        }
+            
+            // Визуальный отклик
+            demon.setAttribute('color', 'green');
+            setTimeout(() => demon.setAttribute('color', 'red'), 200);
+
+            // Случайный респаун
+            demon.setAttribute('position', {
+                x: (Math.random() - 0.5) * 4,
+                y: 1.5,
+                z: (Math.random() - 0.5) * 4 - 2
+            });
+        });
 
         // Распознавание речи
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = 'ru-RU';
-        recognition.continuous = true;
-        recognition.start();
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ru-RU';
+            recognition.continuous = true;
+            recognition.start();
 
-        recognition.onresult = (event) => {
-            const command = event.results[event.results.length - 1][0].transcript.toLowerCase();
-            console.log("Распознано:", command);
-
-            if (command.includes("первая ката") && level >= 3) {
-                alert("Активировано: Дыхание воды, первая ката!");
-                document.getElementById('katana').setAttribute('material', 'color: blue');
-            } else if (level < 3) {
-                alert("Уровень слишком низкий!");
-            }
-        };
+            recognition.onresult = (event) => {
+                const command = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                if (command.includes("первая ката") && level >= 3) {
+                    alert("Активировано: Дыхание воды!");
+                    document.getElementById('katana').setAttribute('visible', true);
+                }
+            };
+        }
     </script>
 </body>
 </html>
